@@ -14,7 +14,6 @@ import GET_TRANSFERS from "./graphql/subgraph";
 
 import {ethers} from 'ethers'
 import {condomAbi, lootAbi} from './abi'
-// import Toast from './toast'
 import { ToastContainer, toast } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -80,9 +79,12 @@ async function buyToken(provider, contractAddress, tokenId, buyCommand){
   }
   try{
     if(buyCommand==='claim'){
-      await lootContract.claim(tokenId)
+      const buyTx = await lootContract.claim(tokenId)
+      toast.info(`sending ${buyTx.hash.substring(0,10)}...`)
+      await buyTx.wait()
+      toast.success(`success`)
     }else{
-      const iface = new ethers.utils.Interface([buyCommand])
+      const iface = new ethers.utils.Interface([`function ${buyCommand}(uint256 tokenId) payable`])
       const customContract = new ethers.Contract(contractAddress, iface, provider.getSigner())
       const buyTx =  await customContract[buyCommand](tokenId)
       toast.info(`sending ${buyTx.hash.substring(0,10)}...`)
