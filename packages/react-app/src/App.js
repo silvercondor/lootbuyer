@@ -140,12 +140,7 @@ function App() {
 
   },[provider])
   
-  // const [ethersProvider, setEthersProvider ] = useState(ethers.getDefaultProvider())
-  
-  
-
-  // if(provider && condom){
-  if (provider && !condom){
+  if (provider && condom){
       return (
       <div>
           <Header>
@@ -187,7 +182,7 @@ function App() {
           />
       </div>
     )
-  }else if(provider && condom){
+  }else if(provider && !condom){
     return(
       <div>
         <Header>          
