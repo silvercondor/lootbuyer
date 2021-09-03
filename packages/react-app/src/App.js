@@ -78,15 +78,20 @@ async function buyToken(provider, contractAddress, tokenId, buyCommand){
     return
   }
   try{
+    console.log(buyCommand)
     if(buyCommand==='claim'){
       const buyTx = await lootContract.claim(tokenId)
       toast.info(`sending ${buyTx.hash.substring(0,10)}...`)
       await buyTx.wait()
       toast.success(`success`)
-    }else{
-      const iface = new ethers.utils.Interface([`function ${buyCommand}(uint256 tokenId) payable`])
-      const customContract = new ethers.Contract(contractAddress, iface, provider.getSigner())
-      const buyTx =  await customContract[buyCommand](tokenId)
+    }else{    
+      console.log('in else')
+      const FormatTypes = ethers.utils.FormatTypes;
+      const iface = new ethers.utils.Interface([buyCommand])
+      const formattedIface = iface.format(FormatTypes.json)
+      const customContract = new ethers.Contract(contractAddress, formattedIface, provider.getSigner())
+      const fnName=buyCommand.slice(9,buyCommand.search("\\("))
+      const buyTx =  await customContract[fnName](tokenId)
       toast.info(`sending ${buyTx.hash.substring(0,10)}...`)
       await buyTx.wait()
       toast.success(`success`)
