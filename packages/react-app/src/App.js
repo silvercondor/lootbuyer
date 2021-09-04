@@ -55,18 +55,29 @@ function WalletButton({ provider, loadWeb3Modal, logoutOfWeb3Modal, setEthersPro
 }
 
 async function checkAvailableId(ethersProvider, contractAddress, startNumber, endNumber, setIds, setCheckIds, reset, setReset){
-  const lootContract=new ethers.Contract(contractAddress, lootAbi, ethersProvider.getSigner())
-  const tokenIds=[]
-  for(let i=startNumber; i<=endNumber; i++){
-    try{
-      await lootContract.ownerOf(i)
-      setCheckIds(i)      
-    }catch(e){
-      console.log(i)
-      tokenIds.push(i)
-      setIds([...tokenIds])
+  try{
+    const verifiedAddr = ethers.utils.getAddress(contractAddress)
+    const lootContract=new ethers.Contract(verifiedAddr, lootAbi, ethersProvider.getSigner())
+    const tokenIds=[]
+    if(endNumber<startNumber){
+      toast.error('Error: End < Start')
+      return
     }
-
+    for(let i=startNumber; i<=endNumber; i++){
+      try{
+        await lootContract.ownerOf(i)
+        setCheckIds(i)      
+      }catch(e){
+        console.log(i)
+        tokenIds.push(i)
+        setIds([...tokenIds])
+      }
+  
+    }
+  }catch(e){
+    console.log(Object.keys(e))
+    toast.error(`${e.name} ${e.reason}`)
+    return
   }
 
 }
