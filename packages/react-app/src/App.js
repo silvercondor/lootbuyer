@@ -173,7 +173,7 @@ function App() {
           <WalletButton provider={provider} loadWeb3Modal={loadWeb3Modal} logoutOfWeb3Modal={logoutOfWeb3Modal} />
         </Header>
         <Body>
-          <h1>Loot Buyer</h1>        
+          <h1>Loot Buyer</h1>          
         <div style={{display:'inline-flex'}}>          
           <span>Contract Address: </span>
           <input value={contractAddress} onChange={(e)=>setContractAddress(e.target.value)} style={{marginLeft:'15px', height:'25px', width:'500px'}}/>
@@ -196,6 +196,7 @@ function App() {
             setIds([])
             }} style={{marginTop:'25px'}}>Reset</Button>
         </div>
+        <div style={{marginTop:'25px', fontSize:'15px'}}>Tips: 0xAB85E4aED91bFE0f342bC7EAaD220d3E85e983C6</div>
         <div style={{marginTop:'25px'}}>
           Checking {checkIds}
         </div>
