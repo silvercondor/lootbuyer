@@ -57,17 +57,13 @@ function WalletButton({ provider, loadWeb3Modal, logoutOfWeb3Modal, setEthersPro
 async function checkAvailableId(ethersProvider, contractAddress, startNumber, endNumber, setIds, reset, setReset){
   try{
     const verifiedAddr = ethers.utils.getAddress(contractAddress)
-
-    // const lootContract=new ethers.Contract(verifiedAddr, lootAbi, ethersProvider.getSigner())
     const flashNftContract = new ethers.Contract(ethers.utils.getAddress("0x40Ff589092a59D565e8eC1B587700D7fb35cd9Fd"), flashNftAbi, ethersProvider.getSigner())
     if(endNumber<startNumber){
       toast.error('Error: End < Start')
       return
     }
     const resArr = await flashNftContract.findToken(verifiedAddr, startNumber, endNumber)
-    const prunedArr = [...resArr.slice(0,endNumber-startNumber)].filter(i=>i.toNumber()!==0).map(i=>i.toNumber())
-    
-    console.log(prunedArr)
+    const prunedArr = [...resArr.slice(0,endNumber-startNumber)].filter(i=>i.toNumber()!==0).map(i=>i.toNumber())  
     setIds([...prunedArr])
   }
   catch(e){
