@@ -54,12 +54,12 @@ function WalletButton({ provider, loadWeb3Modal, logoutOfWeb3Modal, setEthersPro
   );
 }
 
-async function checkAvailableId(ethersProvider, contractAddress, startNumber, endNumber, setIds, setCheckIds){
+async function checkAvailableId(ethersProvider, contractAddress, startNumber, endNumber, setIds, setCheckIds, reset, setReset){
   const lootContract=new ethers.Contract(contractAddress, lootAbi, ethersProvider.getSigner())
   const tokenIds=[]
   for(let i=startNumber; i<=endNumber; i++){
     try{
-      let owned= await lootContract.ownerOf(i)
+      await lootContract.ownerOf(i)
       setCheckIds(i)      
     }catch(e){
       console.log(i)
@@ -128,6 +128,7 @@ function App() {
   const [buyCommand, setBuyCommand]=useState('claim')
   const [condom, setCondom]=useState(false)
   const [disableInput, setDisableInput]=useState(true)
+  const [reset, setReset]=useState(false)
 
 
 
@@ -138,6 +139,15 @@ function App() {
       const condomCount = await condomContract.balanceOf(await signer.getAddress())
       setCondom(condomCount >0 ? true:false)      
     }
+    async function setQueryAddress(){
+      //get query string
+      let search = window.location.search
+      let params = new URLSearchParams(search)
+      let queryAddr = await params.get('a')
+      console.log(queryAddr)
+      setContractAddress(queryAddr)
+    }
+    setQueryAddress()
     if (provider){
       console.log('checking condom')
       //Check condom balance
@@ -157,7 +167,7 @@ function App() {
           <h1>Loot Buyer</h1>        
         <div style={{display:'inline-flex'}}>          
           <span>Contract Address: </span>
-          <input onChange={(e)=>setContractAddress(e.target.value)} style={{marginLeft:'15px', height:'25px', width:'500px'}}/>
+          <input value={contractAddress} onChange={(e)=>setContractAddress(e.target.value)} style={{marginLeft:'15px', height:'25px', width:'500px'}}/>
         </div>
         <div style={{display:'inline-flex', marginTop:'25px'}}>
           <span>Start</span>
@@ -170,8 +180,14 @@ function App() {
           <input disabled={disableInput} value={buyCommand} onChange={(e)=>setBuyCommand(e.target.value)} style={{marginLeft:'25px'}}/>
           <input type='checkbox' onChange={()=>setDisableInput(!disableInput)}/>
         </div>
-        <Button onClick ={()=>checkAvailableId(provider, contractAddress, startNumber, endNumber, setIds, setCheckIds)} style={{marginTop:'25px'}}>Check</Button>
-        <div>
+        <div style={{display:'inline-flex'}}>
+          <Button onClick ={()=>checkAvailableId(provider, contractAddress, startNumber, endNumber, setIds, setCheckIds, reset, setReset)} style={{marginTop:'25px'}}>Check</Button>
+          <Button onClick={()=>{
+            setReset(true)
+            setIds([])
+            }} style={{marginTop:'25px'}}>Reset</Button>
+        </div>
+        <div style={{marginTop:'25px'}}>
           Checking {checkIds}
         </div>
         <AvaliableIds tokenIds={ids} contractAddress={contractAddress} provider={provider} buyCommand={buyCommand}/>
