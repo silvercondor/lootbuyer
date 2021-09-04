@@ -13,7 +13,7 @@ import { addresses, abis } from "@project/contracts";
 import GET_TRANSFERS from "./graphql/subgraph";
 
 import {ethers} from 'ethers'
-import {condomAbi, lootAbi} from './abi'
+import {condomAbi, lootAbi, flashNftAbi} from './abi'
 import { ToastContainer, toast } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -54,26 +54,19 @@ function WalletButton({ provider, loadWeb3Modal, logoutOfWeb3Modal, setEthersPro
   );
 }
 
-async function checkAvailableId(ethersProvider, contractAddress, startNumber, endNumber, setIds, setCheckIds, reset, setReset){
+async function checkAvailableId(ethersProvider, contractAddress, startNumber, endNumber, setIds, reset, setReset){
   try{
     const verifiedAddr = ethers.utils.getAddress(contractAddress)
-    const lootContract=new ethers.Contract(verifiedAddr, lootAbi, ethersProvider.getSigner())
-    const tokenIds=[]
+    const flashNftContract = new ethers.Contract(ethers.utils.getAddress("0x40Ff589092a59D565e8eC1B587700D7fb35cd9Fd"), flashNftAbi, ethersProvider.getSigner())
     if(endNumber<startNumber){
       toast.error('Error: End < Start')
       return
     }
-    for(let i=startNumber; i<=endNumber; i++){
-      try{
-        await lootContract.ownerOf(i)
-        setCheckIds(i)      
-      }catch(e){
-        tokenIds.push(i)
-        setIds([...tokenIds])
-      }
-  
-    }
-  }catch(e){
+    const resArr = await flashNftContract.findToken(verifiedAddr, startNumber, endNumber)
+    const prunedArr = [...resArr.slice(0,endNumber-startNumber)].filter(i=>i.toNumber()!==0).map(i=>i.toNumber())  
+    setIds([...prunedArr])
+  }
+  catch(e){
     toast.error(`${e.name} ${e.reason}`)
     return
   }
@@ -87,14 +80,12 @@ async function buyToken(provider, contractAddress, tokenId, buyCommand){
     return
   }
   try{
-    console.log(buyCommand)
     if(buyCommand==='claim'){
       const buyTx = await lootContract.claim(tokenId)
       toast.info(`sending ${buyTx.hash.substring(0,10)}...`)
       await buyTx.wait()
-      toast.success(`success`)
+      toast.success(`success ${tokenId}`)
     }else{    
-      console.log('in else')
       const FormatTypes = ethers.utils.FormatTypes;
       const iface = new ethers.utils.Interface([buyCommand])
       const formattedIface = iface.format(FormatTypes.json)
@@ -112,10 +103,10 @@ async function buyToken(provider, contractAddress, tokenId, buyCommand){
 function AvaliableIds(props){
   const {tokenIds, provider, contractAddress, buyCommand} = props
   return(
-    <div style={{display:'grid', gridTemplateColumns:'repeat(6,1fr)', gap:'10px'}}>
+    <div style={{display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:'10px'}}>
       {tokenIds.map(i=>{
         return(
-            <Button onClick={()=>buyToken(provider, contractAddress, i, buyCommand)}>
+            <Button key={`button_${i}`} onClick={()=>buyToken(provider, contractAddress, i, buyCommand)}>
               <div key={i} value={i}>
                   {i}
               </div>
@@ -133,7 +124,6 @@ function App() {
   const [startNumber, setStartNumber]=useState(0)
   const [endNumber, setEndNumber]=useState(0)
   const [ids, setIds]=useState([])
-  const [checkIds, setCheckIds]=useState(0)
   const [buyCommand, setBuyCommand]=useState('claim')
   const [condom, setCondom]=useState(false)
   const [disableInput, setDisableInput]=useState(true)
@@ -152,15 +142,17 @@ function App() {
       //get query string
       let search = window.location.search
       let params = new URLSearchParams(search)
-      let queryAddr = await params.get('a')
-      console.log(queryAddr)
+      let queryAddr = params.get('a')
+      let startNum=params.get('s')
+      let endNum=params.get('e')
       setContractAddress(queryAddr)
+      setStartNumber(startNum)
+      setEndNumber(endNum)
     }
     setQueryAddress()
     if (provider){
       console.log('checking condom')
-      //Check condom balance
-    
+      //Check condom balance    
     checkCondom(provider, setCondom)
     }
 
@@ -180,9 +172,9 @@ function App() {
         </div>
         <div style={{display:'inline-flex', marginTop:'25px'}}>
           <span>Start</span>
-          <input onChange={(e)=>setStartNumber(e.target.value)} style={{marginLeft:'15px', width:'100px'}}/>
+          <input value={startNumber} onChange={(e)=>setStartNumber(e.target.value)} style={{marginLeft:'15px', width:'100px'}}/>
           <span>End</span>
-          <input onChange={(e)=>setEndNumber(e.target.value)} style={{marginLeft:'15px', width:'100px'}}/>
+          <input value={endNumber} onChange={(e)=>setEndNumber(e.target.value)} style={{marginLeft:'15px', width:'100px'}}/>
         </div>        
         <div style={{marginTop:'25px'}}>
           <span>Custom buy command</span>
@@ -190,7 +182,7 @@ function App() {
           <input type='checkbox' onChange={()=>setDisableInput(!disableInput)}/>
         </div>
         <div style={{display:'inline-flex'}}>
-          <Button onClick ={()=>checkAvailableId(provider, contractAddress, startNumber, endNumber, setIds, setCheckIds, reset, setReset)} style={{marginTop:'25px'}}>Check</Button>
+          <Button onClick ={()=>checkAvailableId(provider, contractAddress, startNumber, endNumber, setIds, reset, setReset)} style={{marginTop:'25px'}}>Check</Button>
           <Button onClick={()=>{
             setReset(true)
             setIds([])
@@ -198,9 +190,8 @@ function App() {
         </div>
         <div style={{marginTop:'25px', fontSize:'15px'}}>Tips: 0xAB85E4aED91bFE0f342bC7EAaD220d3E85e983C6</div>
         <div style={{marginTop:'25px'}}>
-          Checking {checkIds}
+          <AvaliableIds tokenIds={ids} contractAddress={contractAddress} provider={provider} buyCommand={buyCommand}/>
         </div>
-        <AvaliableIds tokenIds={ids} contractAddress={contractAddress} provider={provider} buyCommand={buyCommand}/>
         </Body>
         <ToastContainer
           position="bottom-right"
