@@ -68,14 +68,12 @@ async function checkAvailableId(ethersProvider, contractAddress, startNumber, en
         await lootContract.ownerOf(i)
         setCheckIds(i)      
       }catch(e){
-        console.log(i)
         tokenIds.push(i)
         setIds([...tokenIds])
       }
   
     }
   }catch(e){
-    console.log(Object.keys(e))
     toast.error(`${e.name} ${e.reason}`)
     return
   }
