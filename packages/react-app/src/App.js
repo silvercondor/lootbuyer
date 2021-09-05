@@ -58,7 +58,7 @@ async function checkAvailableId(ethersProvider, contractAddress, startNumber, en
   try{
     const verifiedAddr = ethers.utils.getAddress(contractAddress)
     const flashNftContract = new ethers.Contract(ethers.utils.getAddress("0x40Ff589092a59D565e8eC1B587700D7fb35cd9Fd"), flashNftAbi, ethersProvider.getSigner())
-    if(endNumber<startNumber){
+    if(parseInt(endNumber) < parseInt(startNumber)){
       toast.error('Error: End < Start')
       return
     }
