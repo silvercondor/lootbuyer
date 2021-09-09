@@ -120,9 +120,11 @@ function App() {
       let queryAddr = params.get('a')
       let startNum=params.get('s')
       let endNum=params.get('e')
+      let buyCommand=params.get('b')
       setContractAddress(queryAddr)
       setStartNumber(startNum)
       setEndNumber(endNum)
+      buyCommand?setBuyCommand(buyCommand):setBuyCommand('claim')
     }
     setQueryAddress()
     if (provider){
