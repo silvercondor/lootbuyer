@@ -1,41 +1,14 @@
  /* eslint-disable */ 
 import React, {useState, useEffect} from "react";
-import { Contract } from "@ethersproject/contracts";
-import { getDefaultProvider } from "@ethersproject/providers";
 import { useQuery } from "@apollo/react-hooks";
 
-import { Body, Button, Header, Image, Link } from "./components";
-import logo from "./ethereumLogo.png";
+import { Body, Button, Header } from "./components";
 import useWeb3Modal from "./hooks/useWeb3Modal";
-import Web3Modal from 'web3modal'
-
-import { addresses, abis } from "@project/contracts";
-import GET_TRANSFERS from "./graphql/subgraph";
 
 import {ethers} from 'ethers'
-import {condomAbi, lootAbi} from './abi'
-// import Toast from './toast'
+import {condomAbi, lootAbi, flashNftAbi} from './abi'
 import { ToastContainer, toast } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
-
-async function readOnChainData() {
-  // Should replace with the end-user wallet, e.g. Metamask
-  const defaultProvider = getDefaultProvider();
-  // Create an instance of an ethers.js Contract
-  // Read more about ethers.js on https://docs.ethers.io/v5/api/contract/contract/
-  const ceaErc20 = new Contract(addresses.ceaErc20, abis.erc20, defaultProvider);
-  // A pre-defined address that owns some CEAERC20 tokens
-  const tokenBalance = await ceaErc20.balanceOf("0x3f8CB69d9c0ED01923F11c829BaE4D9a4CB6c82C");
-  console.log({ tokenBalance: tokenBalance.toString() });
-}
-const providerOptions={}
-
-const web3Modal = new Web3Modal({
-  network: "mainnet", // optional
-  cacheProvider: true, // optional
-  providerOptions // required
-});
-
 
 function WalletButton({ provider, loadWeb3Modal, logoutOfWeb3Modal, setEthersProvider }) {
   return (
@@ -55,19 +28,23 @@ function WalletButton({ provider, loadWeb3Modal, logoutOfWeb3Modal, setEthersPro
   );
 }
 
-async function checkAvailableId(ethersProvider, contractAddress, startNumber, endNumber, setIds, setCheckIds){
-  const lootContract=new ethers.Contract(contractAddress, lootAbi, ethersProvider.getSigner())
-  const tokenIds=[]
-  for(let i=startNumber; i<=endNumber; i++){
-    try{
-      let owned= await lootContract.ownerOf(i)
-      setCheckIds(i)      
-    }catch(e){
-      console.log(i)
-      tokenIds.push(i)
-      setIds([...tokenIds])
+async function checkAvailableId(ethersProvider, contractAddress, startNumber, endNumber, setIds, checking, setChecking){
+  try{
+    const verifiedAddr = ethers.utils.getAddress(contractAddress)
+    const flashNftContract = new ethers.Contract(ethers.utils.getAddress("0x40Ff589092a59D565e8eC1B587700D7fb35cd9Fd"), flashNftAbi, ethersProvider.getSigner())
+    if(parseInt(endNumber) < parseInt(startNumber)){
+      toast.error('Error: End < Start')
+      return
     }
-
+    setChecking(true)
+    const resArr = await flashNftContract.findToken(verifiedAddr, startNumber, endNumber)
+    const prunedArr = [...resArr.slice(0,endNumber-startNumber)].filter(i=>i.toNumber()!==0).map(i=>i.toNumber())  
+    setIds([...prunedArr])
+    setChecking(false)
+  }
+  catch(e){
+    toast.error(`${e.name} ${e.reason}`)
+    return
   }
 
 }
@@ -80,11 +57,17 @@ async function buyToken(provider, contractAddress, tokenId, buyCommand){
   }
   try{
     if(buyCommand==='claim'){
-      await lootContract.claim(tokenId)
-    }else{
+      const buyTx = await lootContract.claim(tokenId)
+      toast.info(`sending ${buyTx.hash.substring(0,10)}...`)
+      await buyTx.wait()
+      toast.success(`success ${tokenId}`)
+    }else{    
+      const FormatTypes = ethers.utils.FormatTypes;
       const iface = new ethers.utils.Interface([buyCommand])
-      const customContract = new ethers.Contract(contractAddress, iface, provider.getSigner())
-      const buyTx =  await customContract[buyCommand](tokenId)
+      const formattedIface = iface.format(FormatTypes.json)
+      const customContract = new ethers.Contract(contractAddress, formattedIface, provider.getSigner())
+      const fnName=buyCommand.slice(9,buyCommand.search("\\("))
+      const buyTx =  await customContract[fnName](tokenId)
       toast.info(`sending ${buyTx.hash.substring(0,10)}...`)
       await buyTx.wait()
       toast.success(`success`)
@@ -96,10 +79,10 @@ async function buyToken(provider, contractAddress, tokenId, buyCommand){
 function AvaliableIds(props){
   const {tokenIds, provider, contractAddress, buyCommand} = props
   return(
-    <div style={{display:'grid', gridTemplateColumns:'repeat(6,1fr)', gap:'10px'}}>
+    <div style={{display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:'10px'}}>
       {tokenIds.map(i=>{
         return(
-            <Button onClick={()=>buyToken(provider, contractAddress, i, buyCommand)}>
+            <Button key={`button_${i}`} onClick={()=>buyToken(provider, contractAddress, i, buyCommand)}>
               <div key={i} value={i}>
                   {i}
               </div>
@@ -111,16 +94,15 @@ function AvaliableIds(props){
 }
 
 function App() {
-  const { loading, error, data } = useQuery(GET_TRANSFERS);
   const [provider, loadWeb3Modal, logoutOfWeb3Modal] = useWeb3Modal();
   const [contractAddress, setContractAddress]=useState(ethers.constants.AddressZero)
   const [startNumber, setStartNumber]=useState(0)
   const [endNumber, setEndNumber]=useState(0)
   const [ids, setIds]=useState([])
-  const [checkIds, setCheckIds]=useState(0)
   const [buyCommand, setBuyCommand]=useState('claim')
   const [condom, setCondom]=useState(false)
   const [disableInput, setDisableInput]=useState(true)
+  const [checking, setChecking]=useState(false)
 
 
 
@@ -131,15 +113,25 @@ function App() {
       const condomCount = await condomContract.balanceOf(await signer.getAddress())
       setCondom(condomCount >0 ? true:false)      
     }
+    async function setQueryAddress(){
+      //get query string
+      let search = window.location.search
+      let params = new URLSearchParams(search)
+      let queryAddr = params.get('a')
+      let startNum=params.get('s')
+      let endNum=params.get('e')
+      setContractAddress(queryAddr)
+      setStartNumber(startNum)
+      setEndNumber(endNum)
+    }
+    setQueryAddress()
     if (provider){
       console.log('checking condom')
-      //Check condom balance
-    
+      //Check condom balance    
     checkCondom(provider, setCondom)
     }
 
   },[provider])
-
   if (provider){
       return (
       <div>
@@ -147,27 +139,32 @@ function App() {
           <WalletButton provider={provider} loadWeb3Modal={loadWeb3Modal} logoutOfWeb3Modal={logoutOfWeb3Modal} />
         </Header>
         <Body>
-          <h1>Loot Buyer</h1>        
+          <h1>Loot Buyer</h1>          
         <div style={{display:'inline-flex'}}>          
           <span>Contract Address: </span>
-          <input onChange={(e)=>setContractAddress(e.target.value)} style={{marginLeft:'15px', height:'25px', width:'500px'}}/>
+          <input value={contractAddress} onChange={(e)=>setContractAddress(e.target.value)} style={{marginLeft:'15px', height:'25px', width:'500px'}}/>
         </div>
         <div style={{display:'inline-flex', marginTop:'25px'}}>
           <span>Start</span>
-          <input onChange={(e)=>setStartNumber(e.target.value)} style={{marginLeft:'15px', width:'100px'}}/>
+          <input value={startNumber} onChange={(e)=>setStartNumber(e.target.value)} style={{marginLeft:'15px', width:'100px'}}/>
           <span>End</span>
-          <input onChange={(e)=>setEndNumber(e.target.value)} style={{marginLeft:'15px', width:'100px'}}/>
+          <input value={endNumber} onChange={(e)=>setEndNumber(e.target.value)} style={{marginLeft:'15px', width:'100px'}}/>
         </div>        
         <div style={{marginTop:'25px'}}>
           <span>Custom buy command</span>
           <input disabled={disableInput} value={buyCommand} onChange={(e)=>setBuyCommand(e.target.value)} style={{marginLeft:'25px'}}/>
           <input type='checkbox' onChange={()=>setDisableInput(!disableInput)}/>
         </div>
-        <Button onClick ={()=>checkAvailableId(provider, contractAddress, startNumber, endNumber, setIds, setCheckIds)} style={{marginTop:'25px'}}>Check</Button>
-        <div>
-          Checking {checkIds}
+        <div style={{display:'inline-flex'}}>
+          <Button onClick ={()=>checkAvailableId(provider, contractAddress, startNumber, endNumber, setIds, checking, setChecking)} style={{marginTop:'25px'}}>Check</Button>
+          <Button onClick={()=>{setIds([])
+            }} style={{marginTop:'25px'}}>Reset</Button>
         </div>
-        <AvaliableIds tokenIds={ids} contractAddress={contractAddress} provider={provider} buyCommand={buyCommand}/>
+        <div style={{marginTop:'25px', fontSize:'15px'}}>Tips: 0xAB85E4aED91bFE0f342bC7EAaD220d3E85e983C6</div>
+        <div hidden={!checking} style={{marginTop:'25px'}}>Checking...</div>
+        <div style={{marginTop:'25px'}}>
+          <AvaliableIds tokenIds={ids} contractAddress={contractAddress} provider={provider} buyCommand={buyCommand}/>
+        </div>
         </Body>
         <ToastContainer
           position="bottom-right"
