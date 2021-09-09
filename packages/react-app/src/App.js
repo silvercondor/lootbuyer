@@ -132,8 +132,7 @@ function App() {
     }
 
   },[provider])
-  
-  if (provider && condom){
+  if (provider){
       return (
       <div>
           <Header>
@@ -178,20 +177,6 @@ function App() {
           draggable
           pauseOnHover
           />
-      </div>
-    )
-  }else if(provider && !condom){
-    return(
-      <div>
-        <Header>          
-          <WalletButton provider={provider} loadWeb3Modal={loadWeb3Modal} logoutOfWeb3Modal={logoutOfWeb3Modal} />
-        </Header>
-        <Body>
-          <h1>No Condom</h1>  
-          <div >
-            Buy at Opensea <a href="https://opensea.io/collection/big-pp-condoms" rel="noopener noreferrer" target="_blank" style={{color:'white'}}>Link</a>
-          </div>      
-        </Body>
       </div>
     )
   }
