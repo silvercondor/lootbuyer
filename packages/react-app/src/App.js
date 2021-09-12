@@ -147,7 +147,7 @@ function App() {
     if (provider){
       console.log('checking condom')
       //Check condom balance    
-    checkCondom(provider, setCondom)
+    // checkCondom(provider, setCondom)
     }
 
   },[provider])
