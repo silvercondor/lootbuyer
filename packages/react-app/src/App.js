@@ -30,17 +30,34 @@ function WalletButton({ provider, loadWeb3Modal, logoutOfWeb3Modal, setEthersPro
 
 async function checkAvailableId(ethersProvider, contractAddress, startNumber, endNumber, setIds, checking, setChecking){
   try{
-    const verifiedAddr = ethers.utils.getAddress(contractAddress)
-    const flashNftContract = new ethers.Contract(ethers.utils.getAddress("0x40Ff589092a59D565e8eC1B587700D7fb35cd9Fd"), flashNftAbi, ethersProvider.getSigner())
-    if(parseInt(endNumber) < parseInt(startNumber)){
-      toast.error('Error: End < Start')
-      return
+    if (ethersProvider.chainId===1){
+      const verifiedAddr = ethers.utils.getAddress(contractAddress)
+      const flashNftContract = new ethers.Contract(ethers.utils.getAddress("0x40Ff589092a59D565e8eC1B587700D7fb35cd9Fd"), flashNftAbi, ethersProvider.getSigner())
+      if(parseInt(endNumber) < parseInt(startNumber)){
+        toast.error('Error: End < Start')
+        return
+      }
+      setChecking(true)
+      const resArr = await flashNftContract.findToken(verifiedAddr, startNumber, endNumber)
+      const prunedArr = [...resArr.slice(0,endNumber-startNumber)].filter(i=>i.toNumber()!==0).map(i=>i.toNumber())  
+      setIds([...prunedArr])
+      setChecking(false)
+    }else{
+      const lootContract = new ethers.Contract(contractAddress, lootAbi, ethersProvider.getSigner())
+      const tokenIds=[]
+      setChecking(true)
+      for(let i=startNumber; i<=endNumber; i++){
+        try{
+          let owned= await lootContract.ownerOf(i)
+          setCheckIds(i)      
+        }catch(e){
+          console.log(i)
+          tokenIds.push(i)
+          setIds([...tokenIds])
+        }
+      }
+      setChecking(false)
     }
-    setChecking(true)
-    const resArr = await flashNftContract.findToken(verifiedAddr, startNumber, endNumber)
-    const prunedArr = [...resArr.slice(0,endNumber-startNumber)].filter(i=>i.toNumber()!==0).map(i=>i.toNumber())  
-    setIds([...prunedArr])
-    setChecking(false)
   }
   catch(e){
     toast.error(`${e.name} ${e.reason}`)
@@ -100,7 +117,7 @@ function App() {
   const [endNumber, setEndNumber]=useState(0)
   const [ids, setIds]=useState([])
   const [buyCommand, setBuyCommand]=useState('claim')
-  const [condom, setCondom]=useState(false)
+  // const [condom, setCondom]=useState(false)
   const [disableInput, setDisableInput]=useState(true)
   const [checking, setChecking]=useState(false)
 
@@ -108,10 +125,10 @@ function App() {
 
   useEffect(()=>{
     async function checkCondom(provider, setCondom){
-      const condomContract=new ethers.Contract("0xD126E02Cf8b4559027F467ed5Ab697E78C4ec569", condomAbi, provider.getSigner())
+      // const condomContract=new ethers.Contract("0xD126E02Cf8b4559027F467ed5Ab697E78C4ec569", condomAbi, provider.getSigner())
       const signer=await provider.getSigner()
-      const condomCount = await condomContract.balanceOf(await signer.getAddress())
-      setCondom(condomCount >0 ? true:false)      
+      // const condomCount = await condomContract.balanceOf(await signer.getAddress())
+      // setCondom(condomCount >0 ? true:false)      
     }
     async function setQueryAddress(){
       //get query string
