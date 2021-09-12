@@ -48,8 +48,8 @@ async function checkAvailableId(ethersProvider, contractAddress, startNumber, en
       setChecking(true)
       for(let i=startNumber; i<=endNumber; i++){
         try{
-          let owned= await lootContract.ownerOf(i)
-          setCheckIds(i)      
+          await lootContract.ownerOf(i)
+          // setCheckIds(i)      
         }catch(e){
           console.log(i)
           tokenIds.push(i)
