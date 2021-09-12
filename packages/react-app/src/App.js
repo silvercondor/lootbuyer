@@ -180,6 +180,9 @@ function App() {
             }} style={{marginTop:'25px'}}>Reset</Button>
         </div>
         <div style={{marginTop:'25px', fontSize:'15px'}}>Tips: 0xAB85E4aED91bFE0f342bC7EAaD220d3E85e983C6</div>
+        <div style={{marginTop:'15px', fontSize:'12px'}}>
+          {ids.slice(0,20).join()}
+        </div>
         <div hidden={!checking} style={{marginTop:'25px'}}>Checking...</div>
         <div style={{marginTop:'25px'}}>
           <AvaliableIds tokenIds={ids} contractAddress={contractAddress} provider={provider} buyCommand={buyCommand}/>
