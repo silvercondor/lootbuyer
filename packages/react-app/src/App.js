@@ -6,7 +6,7 @@ import { Body, Button, Header } from "./components";
 import useWeb3Modal from "./hooks/useWeb3Modal";
 
 import {ethers} from 'ethers'
-import {condomAbi, lootAbi, flashNftAbi} from './abi'
+import {lootAbi, flashNftAbi} from './abi'
 import { ToastContainer, toast } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -100,19 +100,12 @@ function App() {
   const [endNumber, setEndNumber]=useState(0)
   const [ids, setIds]=useState([])
   const [buyCommand, setBuyCommand]=useState('claim')
-  const [condom, setCondom]=useState(false)
   const [disableInput, setDisableInput]=useState(true)
   const [checking, setChecking]=useState(false)
 
 
 
   useEffect(()=>{
-    async function checkCondom(provider, setCondom){
-      const condomContract=new ethers.Contract("0xD126E02Cf8b4559027F467ed5Ab697E78C4ec569", condomAbi, provider.getSigner())
-      const signer=await provider.getSigner()
-      const condomCount = await condomContract.balanceOf(await signer.getAddress())
-      setCondom(condomCount >0 ? true:false)      
-    }
     async function setQueryAddress(){
       //get query string
       let search = window.location.search
@@ -125,11 +118,6 @@ function App() {
       setEndNumber(endNum)
     }
     setQueryAddress()
-    if (provider){
-      console.log('checking condom')
-      //Check condom balance    
-    checkCondom(provider, setCondom)
-    }
 
   },[provider])
   if (provider){
